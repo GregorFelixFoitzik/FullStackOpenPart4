@@ -1,13 +1,13 @@
 ### Simple GET request
-GET http://localhost:3003/api/blogs
+GET http://localhost:3003/blogs
 
 ### Add a new person (valid schema) --> twice for Name must be unique
-POST http://localhost:3003/api/blogs
+POST http://localhost:3003/blogs
 Content-Type: application/json
 
 {
     "title": "Test Blog",
     "author": "GregorFoitzik",
-    "url": "http://localhost:3001/api/blogs/test_blog",
+    "url": "http://localhost:3001/blogs/test_blog",
     "likes": 0
 }

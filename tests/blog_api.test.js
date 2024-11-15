@@ -26,6 +26,18 @@ test.only('blogs are returned as json', async () => {
 //   assert(contents.includes('HTML is easy'))
 // })
 
+// https://stackoverflow.com/a/69302548
+test.only('verify id property of blog posts', async () => {
+  const response = await api.get('/api/blogs')
+  const blogs = response.body
+
+  blogs.forEach(blog => {
+    expect(blog.id).toBeDefined()
+    expect(blog._id).toBeUndefined()
+  })
+})
+
+
 after(async () => {
   await mongoose.connection.close()
 })

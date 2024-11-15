@@ -3,9 +3,6 @@ const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
 const assert = require('assert')
-const { 
-  multipleBlogsSingleFav 
-} = require('../utils/for_testing')
 
 
 const api = supertest(app)
@@ -52,6 +49,28 @@ test.only('a valid blog can be added', async () => {
   assert.strictEqual(addedBlog.likes, 4)
 })
 
+test.only('a valid blog can be added', async () => {
+  const newBlog = {
+    title: 'Test Blog wihtout likes',
+    author: 'Gregor',
+    url: 'https://www.google.com',
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(201)
+    .expect('Content-Type', /application\/json/)
+
+  const response = await api.get('/api/blogs')
+
+  const addedBlog = response.body.find(blog => blog.title === 'Test Blog wihtout likes')
+
+  assert(addedBlog)
+  assert.strictEqual(addedBlog.author, 'Gregor')
+  assert.strictEqual(addedBlog.url, 'https://www.google.com')
+  assert.strictEqual(addedBlog.likes, 0)
+})
 
 
 

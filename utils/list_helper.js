@@ -30,7 +30,6 @@ const mostBlogs = (blogs) => {
 
 }
 
-
 const mostLikes = (blogs) => {
   if (blogs.length === 0) {
     return null

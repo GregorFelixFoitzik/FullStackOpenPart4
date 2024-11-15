@@ -3,6 +3,7 @@ const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
 const assert = require('assert')
+const helper = require('../utils/test_helper') // Ensure this path is correct
 
 const api = supertest(app)
 
@@ -73,7 +74,7 @@ describe('testing backend for blogs:', () => {
     assert.strictEqual(addedBlog.likes, 0)
   })
 
-  test.only('an invalid blog responds with 400 Bad Request', async () => {
+  test('an invalid blog responds with 400 Bad Request', async () => {
     const newBlog = {
       author: 'Gregor',
     }
@@ -83,7 +84,51 @@ describe('testing backend for blogs:', () => {
       .send(newBlog)
       .expect(400)
   })
+
+  test('a blog can be deleted', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToDelete = blogsAtStart[0]
+
+    await api
+      .delete(`/api/blogs/${blogToDelete.id}`)
+      .expect(204)
+
+    const blogsAtEnd = await helper.blogsInDb()
+
+    const title = blogsAtEnd.find(blog => blog.title === 'Test Blog wihtout likes')
+
+    assert(title)
+
+    assert.strictEqual(blogsAtEnd.length, blogsAtStart.length - 1)
+  })
+
+
+  test('update likes for a blog', async () => {
+    const blogsAtStart = await helper.blogsInDb()
+    const blogToUpdate = blogsAtStart[0]
+
+    const updatedBlog = {
+      ...blogToUpdate,
+      likes: blogToUpdate.likes + 2
+    }
+
+    await api
+      .put(`/api/blogs/${blogToUpdate.id}`)
+      .send(updatedBlog)
+      .expect(200)
+
+    const updatedResponse = await api.get('/api/blogs')
+    const updatedBlogFromDb = updatedResponse.body.find(blog => blog.id === blogToUpdate.id)
+
+    assert(updatedBlogFromDb)
+    assert.strictEqual(updatedBlogFromDb.likes, blogToUpdate.likes + 2)
+  })
+
+
 })
+
+
+
 
 after(async () => {
   await mongoose.connection.close()

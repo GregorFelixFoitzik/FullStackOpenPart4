@@ -2,6 +2,11 @@ const { test, after } = require('node:test')
 const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
+const assert = require('assert')
+const { 
+  multipleBlogsSingleFav 
+} = require('../utils/for_testing')
+
 
 const api = supertest(app)
 
@@ -12,30 +17,42 @@ test.only('blogs are returned as json', async () => {
     .expect('Content-Type', /application\/json/)
 })
 
-// test('there are two notes', async () => {
-//   const response = await api.get('/api/notes')
-
-//   assert.strictEqual(response.body.length, 2)
-// })
-
-// test('the first note is about HTTP methods', async () => {
-//   const response = await api.get('/api/notes')
-
-//   const contents = response.body.map(e => e.content)
-//   // is the argument truthy
-//   assert(contents.includes('HTML is easy'))
-// })
-
 // https://stackoverflow.com/a/69302548
 test.only('verify id property of blog posts', async () => {
   const response = await api.get('/api/blogs')
   const blogs = response.body
 
   blogs.forEach(blog => {
-    expect(blog.id).toBeDefined()
-    expect(blog._id).toBeUndefined()
+    assert( blog.id !== undefined)
+    assert( blog._id === undefined)
   })
 })
+
+test.only('a valid blog can be added', async () => {
+  const newBlog = {
+    title: 'Test Blog',
+    author: 'Gregor',
+    url: 'https://www.google.com',
+    likes: 4
+  }
+
+  await api
+    .post('/api/blogs')
+    .send(newBlog)
+    .expect(201)
+    .expect('Content-Type', /application\/json/)
+
+  const response = await api.get('/api/blogs')
+
+  const addedBlog = response.body.find(blog => blog.title === 'Test Blog')
+
+  assert(addedBlog)
+  assert.strictEqual(addedBlog.author, 'Gregor')
+  assert.strictEqual(addedBlog.url, 'https://www.google.com')
+  assert.strictEqual(addedBlog.likes, 4)
+})
+
+
 
 
 after(async () => {

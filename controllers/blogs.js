@@ -1,45 +1,82 @@
 const blogsRouter = require('express').Router()
 const Blog = require('../models/blog')
+// const User = require('../models/user')
+const jwt = require('jsonwebtoken')
 
 blogsRouter.get('/', async (request, response) => {
-  const blogs = await Blog.find({})
+  const blogs = await Blog
+    .find({})
+    .populate('user', { username: 1, name: 1 })
+
   response.json(blogs)
 })
 
 blogsRouter.post('/', async (request, response) => {
-  const { title, url } = request.body
+  const body = request.body
+  const user = request.user
 
-  if (!title || !url) {
+  const decodedToken = jwt.verify(request.token, process.env.SECRET)
+  if (!decodedToken.id) {
+    return response.status(401).json({ error: 'token invalid' })
+  }
+
+  if (!user) {
+    return response.status(401).json({ error: 'user not found' })
+  }
+  if (!body.title || !body.url) {
     return response.status(400).json({ error: 'title or url missing' })
   }
 
-  const blog = new Blog(request.body)
+  const blog = new Blog({
+    title: body.title,
+    author: body.author,
+    url: body.url,
+    likes: body.likes || 0,
+    user: user.id
+  })
+
   const savedBlog = await blog.save()
+
+  user.blogs = user.blogs.concat(savedBlog._id)
+  await user.save()
+
   response.status(201).json(savedBlog)
 })
 
-blogsRouter.delete('/:id', async (request, response, next) => {
-  try {
-    await Blog.findByIdAndDelete(request.params.id)
-    response.status(204).end()
-  } catch(exception) {
-    next(exception)
+blogsRouter.delete('/:id', async (request, response) => {
+  const user = request.user
+  const blog = await Blog.findById(request.params.id)
+
+  if (user._id.toString() !== blog.user.toString()) {
+    return response.status(403).json({ error: 'permission denied' })
   }
+  const decodedToken = jwt.verify(request.token, process.env.SECRET)
+  if (!decodedToken.id) {
+    return response.status(401).json({ error: 'token invalid' })
+  }
+  if (blog.user.toString() !== decodedToken.id) {
+    return response.status(403).json({ error: 'permission denied' })
+  }
+
+
+  if (!blog) {
+    return response.status(404).json({ error: 'blog not found' })
+  }
+
+  await Blog.findByIdAndDelete(request.params.id)
+  response.status(204).end()
+
 })
 
-blogsRouter.put('/:id', async (request, response, next) => {
+blogsRouter.put('/:id', async (request, response) => {
   const { likes } = request.body
 
-  try {
-    const updatedBlog = await Blog.findByIdAndUpdate(
-      request.params.id,
-      { likes },
-      { new: true, runValidators: true, context: 'query' }
-    )
-    response.json(updatedBlog)
-  } catch(exception) {
-    next(exception)
-  }
+  const updatedBlog = await Blog.findByIdAndUpdate(
+    request.params.id,
+    { likes },
+    { new: true, runValidators: true, context: 'query' }
+  )
+  response.json(updatedBlog)
 })
 
 module.exports = blogsRouter

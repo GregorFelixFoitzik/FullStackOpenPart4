@@ -1,5 +1,4 @@
-const bcrypt = require('bcryptjs')
-const User = require('../models/user')
+
 
 const { test, after, beforeEach, describe } = require('node:test') // after,
 const mongoose = require('mongoose')
@@ -12,18 +11,7 @@ const api = supertest(app)
 
 describe('when there is initially one user in db', () => {
   beforeEach(async () => {
-    await User.deleteMany({})
-
-    // this user will be always in the test db
-    const passwordHash = await bcrypt.hash('sekret', 10)
-    const user = new User({
-      username: 'root',
-      passwordHash: passwordHash,
-      blogs: ['5a422a851b54a676234d17f7', '5a422aa71b54a676234d17f8'],
-      id: '67575c93ccd93e2fb80dd538'
-    })
-
-    await user.save()
+    await helper.initializeTestDatabase()
   })
 
   test('creation succeeds with a fresh username', async () => {

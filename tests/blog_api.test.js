@@ -1,48 +1,19 @@
-const { test, after, before, beforeEach, describe } = require('node:test')
+const { test, after, beforeEach, describe } = require('node:test')
 const mongoose = require('mongoose')
 const supertest = require('supertest')
 const app = require('../app')
 const assert = require('assert')
 const helper = require('../utils/test_helper') // Ensure this path is correct
-const Blog = require('../models/blog')
+const User = require('../models/user')
 const api = supertest(app)
-
-const user_id = '675769c99da61adfb77ce7c2'
-
-const initialNotes = [
-  {
-    _id: '5a422a851b54a676234d17f7',
-    title: 'React patterns',
-    author: 'Michael Chan',
-    url: 'https://reactpatterns.com/',
-    likes: 7,
-    user: user_id,
-    __v: 0
-  },
-  {
-    _id: '5a422aa71b54a676234d17f8',
-    title: 'Go To Statement Considered Harmful',
-    author: 'Edsger W. Dijkstra',
-    url: 'http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html',
-    likes: 5,
-    user: user_id,
-    __v: 0
-  }
-]
-
 
 describe('testing backend for blogs:', () => {
   let token
-  before(async () => {
-    token = await helper.loginUser()
-  })
-
+  let rootUser
   beforeEach(async () => {
-    await Blog.deleteMany({})
-    let blogObject = new Blog(initialNotes[0])
-    await blogObject.save()
-    blogObject = new Blog(initialNotes[1])
-    await blogObject.save()
+    await helper.initializeTestDatabase()
+    token = await helper.loginUser()
+    rootUser = await User.findOne({ username: 'root' })
   })
 
   test('blogs are returned as json', async () => {
@@ -69,7 +40,7 @@ describe('testing backend for blogs:', () => {
       author: 'Gregor',
       url: 'https://www.google.com',
       likes: 4,
-      user: user_id
+      user: rootUser.id
     }
 
     await api
@@ -142,7 +113,6 @@ describe('testing backend for blogs:', () => {
     assert.strictEqual(blogsAtEnd.length, blogsAtStart.length - 1)
   })
 
-
   test('update likes for a blog', async () => {
     const blogsAtStart = await helper.blogsInDb()
     const blogToUpdate = blogsAtStart[0]
@@ -162,6 +132,38 @@ describe('testing backend for blogs:', () => {
 
     assert(updatedBlogFromDb)
     assert.strictEqual(updatedBlogFromDb.likes, blogToUpdate.likes + 2)
+  })
+
+  test('adding blog fails without valid token', async () => {
+    const newBlog = {
+      title: 'Test Blog Failing',
+      author: 'Gregor',
+      url: 'https://www.google.com',
+      likes: 4,
+      user: rootUser.id
+    }
+
+    token = 'invalidToken'
+    await api
+      .post('/api/blogs')
+      .set({ Authorization: `Bearer ${token}` })
+      .send(newBlog)
+      .expect(401)
+  })
+
+  test('adding blog fails without any token', async () => {
+    const newBlog = {
+      title: 'Test Blog Failing',
+      author: 'Gregor',
+      url: 'https://www.google.com',
+      likes: 4,
+      user: rootUser.id
+    }
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401)
   })
 
 })
